@@ -8,6 +8,8 @@ HanaAgent 跨设备跨地域共享会话插件。
 **设计文档**：[DESIGN.md](./DESIGN.md)  
 **审核人**：ming（架构+安全）· 菲伦（设计哲学+UX）
 
+**贡献者**：fangkuaizhu · Hanako
+
 ---
 
 ## 核心概念
