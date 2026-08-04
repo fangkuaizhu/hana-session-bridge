@@ -14,6 +14,7 @@ import type { HanaPluginContext } from '../vendor/plugin-runtime.js';
 import { subscribeSessionEvents, sendSessionMessage } from '../vendor/plugin-runtime.js';
 import type { Message, Transport } from './transport.ts';
 import type { RoomManager } from './room-manager.ts';
+import { MessageStore } from './message-store.ts';
 
 /** 事件类型 → Message.type 映射表 */
 const EVENT_TYPE_MAP: Record<string, Message['type']> = {
@@ -35,16 +36,24 @@ export class MessageBus {
   private transport: Transport;
   private roomManager: RoomManager;
   private ctx: HanaPluginContext;
+  /** 消息缓冲区（WebView 轮询读取） */
+  private store: MessageStore;
 
   /** roomId -> hostSession 订阅注销函数（bridgeSession 注册） */
   private bridgeUnsubs = new Map<string, () => void>();
   /** roomId -> 已接收的最高 seq（去重） */
   private lastReceivedSeq = new Map<string, number>();
 
-  constructor(transport: Transport, roomManager: RoomManager, ctx: HanaPluginContext) {
+  constructor(transport: Transport, roomManager: RoomManager, ctx: HanaPluginContext, store?: MessageStore) {
     this.transport = transport;
     this.roomManager = roomManager;
     this.ctx = ctx;
+    this.store = store ?? new MessageStore();
+  }
+
+  /** 暴露消息缓冲区（route 层读取） */
+  get messageStore(): MessageStore {
+    return this.store;
   }
 
   /**
@@ -114,14 +123,16 @@ export class MessageBus {
     }
 
     // 记录建议广播（供 UI 展示）
-    await this.transport.send(roomId, {
+    const suggestionMsg: Message = {
       roomId,
       from: fromUserId,
       seq: this.roomManager.nextSeq(roomId),
       type: 'suggestion',
       payload: { text },
       timestamp: Date.now(),
-    });
+    };
+    this.store.push(roomId, suggestionMsg);
+    await this.transport.send(roomId, suggestionMsg);
   }
 
   /**
@@ -138,6 +149,9 @@ export class MessageBus {
     this.lastReceivedSeq.set(roomId, msg.seq);
 
     this.roomManager.touch(roomId);
+
+    // 写入缓冲区（接收方 WebView 轮询读取）
+    this.store.push(roomId, msg);
 
     // Phase 1：handleMessage 的消费方是 WebView/工具层；
     // 这里将消息通过 ctx.bus 抛给上层（route 层用 EventBus 订阅消费）
@@ -182,6 +196,8 @@ export class MessageBus {
     };
 
     this.roomManager.touch(roomId);
+    // 写入缓冲区（发送方本地也要能轮询到自己的广播）
+    this.store.push(roomId, message);
     await this.transport.send(roomId, message);
   }
 

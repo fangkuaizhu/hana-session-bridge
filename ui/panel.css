@@ -1,0 +1,285 @@
+/* ui/panel.css — RoomPanel 样式（跟随 Hana CSS 变量） */
+.sb-panel {
+  font-family: inherit;
+}
+
+.sb-room-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 4px 0;
+}
+
+.sb-room-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 14px;
+  border: 1px solid var(--border, rgba(128,128,128,0.25));
+  border-radius: 10px;
+  background: var(--bg-card, #fff);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.15s ease;
+}
+.sb-room-card:hover {
+  border-color: var(--accent, #537d96);
+}
+
+.sb-room-card-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sb-room-id {
+  font-weight: 700;
+  letter-spacing: 1px;
+  font-family: monospace;
+}
+
+.sb-badge {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent, #537d96) 18%, transparent);
+  color: var(--accent, #537d96);
+}
+
+.sb-room-card-meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  opacity: 0.7;
+}
+
+/* 房间视图 */
+.sb-room-view {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  height: 100%;
+  min-height: 420px;
+}
+
+.sb-room-view-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.sb-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #3fb950;
+  margin-left: auto;
+}
+
+.sb-room-body {
+  display: flex;
+  gap: 12px;
+  flex: 1;
+  min-height: 0;
+}
+
+.sb-stream {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  border: 1px solid var(--border, rgba(128,128,128,0.2));
+  border-radius: 10px;
+  max-height: 420px;
+}
+
+.sb-empty-stream {
+  align-items: center;
+  justify-content: center;
+}
+
+.sb-bubble {
+  display: flex;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--bg-card, #fafafa);
+  border: 1px solid var(--border, rgba(128,128,128,0.15));
+}
+
+.sb-bubble-icon {
+  font-size: 16px;
+}
+
+.sb-bubble-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.sb-bubble-meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  opacity: 0.7;
+  margin-bottom: 2px;
+}
+
+.sb-bubble-content {
+  font-size: 13px;
+  line-height: 1.5;
+  word-break: break-word;
+  white-space: pre-wrap;
+}
+
+.sb-bubble-suggestion {
+  border-style: dashed;
+  border-color: var(--accent, #537d96);
+}
+
+.sb-bubble-agent_reply {
+  background: color-mix(in srgb, var(--accent, #537d96) 8%, var(--bg-card, #fff));
+}
+
+.sb-bubble-tool_call, .sb-bubble-tool_result {
+  opacity: 0.85;
+  font-size: 12px;
+}
+
+/* 参与者 */
+.sb-participants {
+  width: 160px;
+  border: 1px solid var(--border, rgba(128,128,128,0.2));
+  border-radius: 10px;
+  padding: 10px;
+  max-height: 420px;
+  overflow-y: auto;
+}
+
+.sb-participants-title {
+  font-size: 12px;
+  font-weight: 700;
+  margin-bottom: 8px;
+  opacity: 0.8;
+}
+
+.sb-participants-empty {
+  font-size: 12px;
+  opacity: 0.5;
+}
+
+.sb-participant {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 0;
+  font-size: 13px;
+}
+
+.sb-participant-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #3fb950;
+}
+
+.sb-participant-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 输入栏 */
+.sb-inputbar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.sb-inputbar > :first-child {
+  flex: 1;
+}
+
+/* 弹窗 */
+.sb-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.sb-dialog {
+  background: var(--bg-card, #fff);
+  border-radius: 12px;
+  padding: 20px;
+  min-width: 320px;
+  max-width: 90vw;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.sb-dialog h3 {
+  margin: 0 0 4px;
+}
+
+.sb-perm-options {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.sb-perm-option {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  padding: 4px 8px;
+  border: 1px solid var(--border, rgba(128,128,128,0.25));
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.sb-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+/* 杂项 */
+.sb-error {
+  color: var(--danger, #d73a49);
+  font-size: 13px;
+  padding: 6px 0;
+}
+
+.sb-notice {
+  font-size: 13px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--accent, #537d96) 12%, transparent);
+}
+
+.sb-approvals {
+  border: 1px solid var(--border, rgba(128,128,128,0.2));
+  border-radius: 10px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.sb-approval-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+.sb-approval-item span:first-child {
+  flex: 1;
+}

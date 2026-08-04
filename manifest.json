@@ -51,7 +51,7 @@
     ],
     "page": {
       "title": "共享房间",
-      "route": "room-panel"
+      "route": "/room-panel"
     }
   }
 }
