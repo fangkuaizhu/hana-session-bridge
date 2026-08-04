@@ -6,5 +6,8 @@
   "description": "HanaAgent 跨设备跨地域共享会话插件（SessionBridge）",
   "scripts": {
     "build": "vite build"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.3"
   }
 }
