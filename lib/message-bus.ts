@@ -69,6 +69,15 @@ export class MessageBus {
     };
   }
 
+  /** 取消指定房间的桥接（离开房间时调用，只影响该房间） */
+  unbridge(roomId: string): void {
+    const off = this.bridgeUnsubs.get(roomId);
+    if (off) {
+      try { off(); } catch { /* ignore */ }
+      this.bridgeUnsubs.delete(roomId);
+    }
+  }
+
   /**
    * 注入建议消息：将观众的建议以 context.beforeUser 注入房主 session。
    * 仅允许权限 >= suggest 的参与者（任务书约束）。

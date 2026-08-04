@@ -81,10 +81,15 @@ export class RoomManager {
     return path.join(this.roomsDir, `${roomId}.json`);
   }
 
-  /** 生成 8 位字母数字房间码，碰撞时重试（最多 10 次） */
+  /** 生成 8 位字母数字房间码（仅 A-Z0-9，避免 base64url 产生 -/_ 导致工具正则校验失败），碰撞时重试（最多 10 次） */
   private generateRoomCode(): string {
+    const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
     for (let attempt = 0; attempt < 10; attempt++) {
-      const code = crypto.randomBytes(6).toString('base64url').slice(0, ROOM_CODE_LENGTH).toUpperCase();
+      const bytes = crypto.randomBytes(ROOM_CODE_LENGTH);
+      let code = '';
+      for (const b of bytes) {
+        code += alphabet[b % alphabet.length];
+      }
       if (!this.rooms.has(code) && !readJSON<Room>(this.roomFilePath(code))) {
         return code;
       }

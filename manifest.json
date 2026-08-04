@@ -5,7 +5,7 @@
   "version": "0.1.0",
   "description": "SessionBridge：同一 Hana 实例上两个用户实时共享会话上下文（Phase 1 开发版）",
   "trust": "full-access",
-  "activationEvents": ["onToolCall:create-room", "onToolCall:join-room"],
+  "activationEvents": ["onToolCall:create-room", "onToolCall:join-room", "onToolCall:leave-room", "onToolCall:room-status"],
   "capabilities": [
     "session.read",
     "session.write",
@@ -43,6 +43,7 @@
       "tools/test-transport.ts",
       "tools/test-room.ts",
       "tools/test-message-bus.ts",
+      "tools/test-tools.ts",
       "tools/create-room.ts",
       "tools/join-room.ts",
       "tools/leave-room.ts",
