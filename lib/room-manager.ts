@@ -48,6 +48,8 @@ export interface Room {
   lastActivityAt: number;
   status: 'active' | 'closing' | 'closed';
   seqCounter: number;
+  /** 跨机标志：房间由远端房主创建，本地仅记录参与者视角（Phase 2） */
+  remote?: boolean;
 }
 
 export const ROOM_CODE_LENGTH = 8;
@@ -229,6 +231,100 @@ export class RoomManager {
       room.lastActivityAt = Date.now();
       this.persist(room);
       return true;
+    });
+  }
+
+  /**
+   * 跨机加入：观众在本地创建一个远端房间的记录（Phase 2）。
+   * Relay 握手（auth）成功后由 WebSocketTransport 调用；
+   * 房间存在性/密码已由 Relay 验证，本地只记录参与者视角。
+   * hostId 暂设为自己，sync_response 到达后由 applyRemoteState 修正。
+   */
+  async joinRemoteRoom(
+    roomId: string,
+    opts: { userId: string; sessionPath: string }
+  ): Promise<void> {
+    return this.withRoomLock(roomId, async () => {
+      const existing = this.getRoom(roomId);
+      if (existing) {
+        if (!existing.participants.some((p) => p.userId === opts.userId)) {
+          existing.participants.push({ userId: opts.userId, sessionPath: opts.sessionPath, joinedAt: Date.now() });
+          existing.lastActivityAt = Date.now();
+          this.persist(existing);
+        }
+        return;
+      }
+      const now = Date.now();
+      const room: Room = {
+        roomId,
+        permissionLevel: 'suggest',
+        hostId: opts.userId,
+        participants: [{ userId: opts.userId, sessionPath: opts.sessionPath, joinedAt: now }],
+        pendingJoinRequests: [],
+        createdAt: now,
+        lastActivityAt: now,
+        status: 'active',
+        seqCounter: 0,
+        remote: true,
+      };
+      this.rooms.set(roomId, room);
+      this.persist(room);
+    });
+  }
+
+  /**
+   * 应用 Relay 返回的房间状态（Phase 2 重连/加入后同步参与者列表）。
+   * 仅对 remote 房间生效（本地创建的房间以本地为准，房主视角完整）。
+   */
+  async applyRemoteState(
+    roomId: string,
+    state: { participants: Array<{ userId: string }>; createdAt: number },
+    selfUserId?: string
+  ): Promise<void> {
+    return this.withRoomLock(roomId, async () => {
+      const room = this.getRoom(roomId);
+      if (!room || !room.remote) return;
+      const remoteUsers = new Set(state.participants.map((p) => p.userId));
+      // 合并新增的远端参与者
+      for (const u of state.participants) {
+        if (!room.participants.some((p) => p.userId === u.userId)) {
+          room.participants.push({ userId: u.userId, sessionPath: '', joinedAt: Date.now() });
+        }
+      }
+      // 移除已离开的远端参与者（保留自己）
+      const self = selfUserId ?? room.hostId;
+      room.participants = room.participants.filter((p) => p.userId === self || remoteUsers.has(p.userId));
+      // 房主：Relay 参与者列表按加入序，第一个即房主
+      if (state.participants.length > 0) {
+        room.hostId = state.participants[0].userId;
+      }
+      room.lastActivityAt = Date.now();
+      this.persist(room);
+    });
+  }
+
+  /**
+   * 应用单个参与者的加入/离开（Phase 2 Relay participant_join/leave 通知）。
+   * 对所有房间生效（房主本地房间也要反映远端参与者，供 UI 轮询）。
+   */
+  async applyRemoteParticipant(roomId: string, userId: string, joined: boolean): Promise<void> {
+    return this.withRoomLock(roomId, async () => {
+      const room = this.getRoom(roomId);
+      if (!room || room.status !== 'active') return;
+      if (joined) {
+        if (!room.participants.some((p) => p.userId === userId)) {
+          room.participants.push({ userId, sessionPath: '', joinedAt: Date.now() });
+          room.lastActivityAt = Date.now();
+          this.persist(room);
+        }
+      } else {
+        const before = room.participants.length;
+        room.participants = room.participants.filter((p) => p.userId !== userId);
+        if (room.participants.length !== before) {
+          room.lastActivityAt = Date.now();
+          this.persist(room);
+        }
+      }
     });
   }
 

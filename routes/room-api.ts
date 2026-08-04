@@ -4,6 +4,7 @@
 // 消费方：ui/RoomPanel.tsx 通过 hana.api.fetch() 调用。
 import type { HanaPluginContext } from '../vendor/plugin-runtime.js';
 import { getSharedState } from '../lib/shared.ts';
+import { WebSocketTransport } from '../lib/websocket-transport.ts';
 import type { PermissionLevel } from '../lib/room-manager.ts';
 
 interface HonoLikeContext {
@@ -108,6 +109,21 @@ export default function registerRoomApiRoutes(app: { get: (p: string, h: (c: Hon
     const body = (await c.req.json()) as { password?: string };
     const userId = pluginCtx.userId ?? 'unknown';
     const sessionPath = pluginCtx.sessionPath ?? pluginCtx.sessionRef?.sessionPath ?? null;
+
+    // Phase 2 跨机模式：本地无该房间记录，直接经 Relay 验证并加入
+    if (transport instanceof WebSocketTransport) {
+      try {
+        await transport.connect(roomId, { password: body.password });
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        if (msg.includes('密码错误')) return c.json({ error: '密码错误' }, 400);
+        return c.json({ error: '无法加入房间，请检查房间码' }, 400);
+      }
+      await roomManager.joinRemoteRoom(roomId, { userId, sessionPath: sessionPath ?? '/unknown' });
+      if (sessionPath) messageBus.bridgeSession(roomId, sessionPath);
+      const room = roomManager.getRoom(roomId);
+      return c.json({ status: 'joined', roomId, permissionLevel: room?.permissionLevel });
+    }
 
     let status: 'joined' | 'pending';
     try {

@@ -3,12 +3,25 @@
 HanaAgent 跨设备跨地域共享会话插件。
 
 **代号**：SessionBridge  
-**当前阶段**：设计完成，待 Phase 0 最小验证  
-**产品经理**：Hanako  
-**设计文档**：[DESIGN.md](./DESIGN.md)  
+**当前阶段**：Phase 2 开发完成（R1-R3 全绿，R4 待 DNS）
+**产品经理**：Hanako
+**设计文档**：[DESIGN.md](./DESIGN.md) ｜ Phase 2 任务书：[docs/phase-2-spec.md](./docs/phase-2-spec.md)
 **审核人**：ming（架构+安全）· 菲伦（设计哲学+UX）
 
 **贡献者**：fangkuaizhu · Hanako
+
+---
+
+## 状态速览（2026-08-05）
+
+| 阶段 | 状态 | 产出 |
+|------|------|------|
+| Phase 0 | ✅ | 验证报告 docs/phase-0-report.md |
+| Phase 1 | ✅ | 同机共享（EventBusTransport，zip 可安装） |
+| Phase 2 R1 | ✅ 12/12 | relay-server/server.js（协议/心跳/限流/幽灵清理） |
+| Phase 2 R2 | ✅ 15/15 | lib/websocket-transport.ts（重连/去重/心跳）+ vendor/ws |
+| Phase 2 R3 | ✅ 9/9 | shared.ts Transport 选择 + 跨机 join 分支 + zip 打包 |
+| Phase 2 R4 | ⏸ 阻塞 | Relay 已部署 VPS（64162 + PM2）；需 DNS：阿里云加 A 记录 `relay.myczdfkz.shop → 47.93.186.189`，然后 VPS 执行 `relay-server/deploy/deploy-relay.sh` |
 
 ---
 

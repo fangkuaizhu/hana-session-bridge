@@ -3,6 +3,7 @@
 // 有密码 → 验证通过直接加入；无密码 → 创建待批准请求。
 import { defineTool } from '../vendor/plugin-runtime.js';
 import { getSharedState } from '../lib/shared.ts';
+import { WebSocketTransport } from '../lib/websocket-transport.ts';
 
 export const { name, description, parameters, execute } = defineTool({
   name: 'join_room',
@@ -32,6 +33,29 @@ export const { name, description, parameters, execute } = defineTool({
 
     const userId = ctx.userId ?? 'unknown';
     const sessionPath = ctx.sessionPath ?? ctx.sessionRef?.sessionPath ?? null;
+
+    // Phase 2 跨机模式：本地无该房间记录，直接经 Relay 验证并加入
+    if (transport instanceof WebSocketTransport) {
+      try {
+        await transport.connect(roomId, { password: input.password });
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        // 统一提示，不透露房间是否存在（设计文档 §9.2 防枚举）
+        if (msg.includes('密码错误')) return { error: '密码错误' };
+        return { error: '无法加入房间，请检查房间码是否正确' };
+      }
+      await roomManager.joinRemoteRoom(roomId, { userId, sessionPath: sessionPath ?? '/unknown' });
+      if (sessionPath) {
+        messageBus.bridgeSession(roomId, sessionPath);
+      }
+      const room = roomManager.getRoom(roomId);
+      return {
+        status: 'joined',
+        roomId,
+        permissionLevel: room?.permissionLevel,
+        hint: '已通过 Relay 加入房间，实时共享已开启。',
+      };
+    }
 
     let status: 'joined' | 'pending';
     try {

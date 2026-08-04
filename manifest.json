@@ -2,8 +2,8 @@
   "manifestVersion": 1,
   "id": "session-bridge",
   "name": "会话共享",
-  "version": "0.1.0",
-  "description": "SessionBridge：同一 Hana 实例上两个用户实时共享会话上下文（Phase 1 开发版）",
+  "version": "0.2.0",
+  "description": "SessionBridge：跨设备实时共享会话上下文。同机（EventBus）+ 跨机（WebSocket Relay）双通道",
   "trust": "full-access",
   "activationEvents": ["onStartup", "onToolCall:create-room", "onToolCall:join-room", "onToolCall:leave-room", "onToolCall:room-status"],
   "capabilities": [

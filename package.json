@@ -10,7 +10,8 @@
     "@hana/plugin-runtime": "file:vendor/sdk/hana-plugin-runtime-0.0.0.tgz",
     "@hana/plugin-sdk": "file:vendor/sdk/hana-plugin-sdk-0.0.0.tgz",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "ws": "^8.21.2"
   },
   "scripts": {
     "build": "vite build",
