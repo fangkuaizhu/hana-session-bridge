@@ -1,0 +1,23 @@
+{
+  "manifestVersion": 1,
+  "id": "session-bridge-smoke",
+  "name": "SessionBridge Smoke",
+  "version": "0.0.1",
+  "description": "Phase 0 最小验证：subscribeSessionEvents 存在性 + 跨用户 session 操作权限",
+  "trust": "full-access",
+  "capabilities": [
+    "session.read",
+    "session.write",
+    "agent.read",
+    "agent.write"
+  ],
+  "contributes": {
+    "tools": [
+      "tools/probe-subscribe.js",
+      "tools/probe-cross-session.js",
+      "tools/probe-cross-session-v2.js",
+      "tools/probe-deep.js",
+      "tools/probe-final.js"
+    ]
+  }
+}
