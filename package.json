@@ -1,0 +1,10 @@
+{
+  "name": "hana-session-bridge",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "HanaAgent 跨设备跨地域共享会话插件（SessionBridge）",
+  "scripts": {
+    "build": "vite build"
+  }
+}

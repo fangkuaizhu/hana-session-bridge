@@ -1,0 +1,56 @@
+{
+  "manifestVersion": 1,
+  "id": "session-bridge",
+  "name": "会话共享",
+  "version": "0.1.0",
+  "description": "SessionBridge：同一 Hana 实例上两个用户实时共享会话上下文（Phase 1 开发版）",
+  "trust": "full-access",
+  "activationEvents": ["onToolCall:create-room", "onToolCall:join-room"],
+  "capabilities": [
+    "session.read",
+    "session.write",
+    "agent.read",
+    "agent.write",
+    "network.fetch",
+    "resource.read",
+    "resource.write"
+  ],
+  "network": {
+    "allowedHosts": ["relay.myczdfkz.shop"],
+    "methods": ["GET", "POST"],
+    "defaultTimeoutMs": 30000,
+    "maxResponseBytes": 1048576
+  },
+  "ui": {
+    "hostCapabilities": ["external.open", "clipboard.writeText"]
+  },
+  "contributes": {
+    "configuration": {
+      "properties": {
+        "relayServerUrl": {
+          "type": "string",
+          "title": "Relay 服务器地址",
+          "default": "wss://relay.myczdfkz.shop"
+        },
+        "userId": {
+          "type": "string",
+          "title": "用户标识名",
+          "default": ""
+        }
+      }
+    },
+    "tools": [
+      "tools/test-transport.ts",
+      "tools/test-room.ts",
+      "tools/test-message-bus.ts",
+      "tools/create-room.ts",
+      "tools/join-room.ts",
+      "tools/leave-room.ts",
+      "tools/room-status.ts"
+    ],
+    "page": {
+      "title": "共享房间",
+      "route": "room-panel"
+    }
+  }
+}
