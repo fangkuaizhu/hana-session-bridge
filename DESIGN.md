@@ -13,6 +13,7 @@
 | v0.1 | 08-04 | 初始草案 |
 | v0.2 | 08-04 | 基于官方 PLUGIN_SDK.md + PLUGINS.md 确认 SDK API |
 | v0.3 | 08-04 | 整合 ming 和菲伦审核意见：重新建模、Phase 0、Transport 抽象、生命周期、安全强化 |
+| v0.4 | 08-04 | Phase 0 验证完成：subscribeSessionEvents 确认存在且签名匹配（§2.2），跨 session 操作无权限错误（§2.3 路径 A 采用） |
 
 ---
 
@@ -66,26 +67,34 @@
 | `definePlugin()` | `@hana/plugin-runtime` | 有状态插件入口 |
 | `defineTool()` | `@hana/plugin-runtime` | 类型安全工具定义 |
 
-### 2.2 ⚠️ 关键不确定性（Phase 0 验证对象）
+### 2.2 ✅ 已验证 API（Phase 0 完成）
 
-| API | 风险 | 来源 |
+> Phase 0 实机验证结论（2026-08-04）：`subscribeSessionEvents` 存在、签名匹配、事件流真实可达且按 session 隔离；跨 session 操作无权限错误。详见 [docs/phase-0-report.md](./docs/phase-0-report.md)。
+
+| API | 签名（实测） | 状态 |
 |-----|------|------|
-| `subscribeSessionEvents(ctx, target, cb)` | 在 `@hana/plugin-runtime` 的 SKILL.md 中被提及，但**公开 PLUGINS.md 和 PLUGIN_SDK.md 中没有**。如果不存在，实时事件流需改用 Pi SDK extension + EventBus 桥接。如果存在但签名不同，Phase 1 通信模型需调整。 | ming 交叉验证 |
-| 跨用户 session 操作权限 | 插件能否通过 Session Bus 操作其他用户的 session（订阅事件/发送消息）？如果不能，同机协作需改为：每个参与者安装插件，通过 EventBus 间通信。 | 菲伦 + ming 共同指出 |
+| `subscribeSessionEvents(ctx, target, handler)` | `(ctx, target: HanaSessionTarget, handler: (event, meta) => void) => () => void`（返回 unsubscribe） | ✅ 已验证（存在，签名匹配预期） |
+| 跨用户 session 操作 | 创建/订阅/发送均成功，零权限错误；`session_busy` 是运行中保护而非权限边界 | ✅ 已验证（同机路径可行） |
+| `listSessions(ctx, { ownerPluginId })` | 插件私有 session 需 ownerPluginId 过滤；返回字段为 `path`（无 `sessionId` 字段） | ✅ 已验证 |
+| `sendSessionMessage` 的 `context` 注入 | `context.system` + `context.beforeUser` 被接受（`accepted: true`） | ✅ 已验证 |
+| 事件类型（已观测） | `agent_start` / `turn_start` / `message_start` | ✅ 部分验证（完整谱系待 Phase 1 补充） |
 
-### 2.3 实时消息通道备选方案
+**实测事件隔离性**：订阅 session A 后向 session B 发消息，A 收到 0 个事件。订阅按 session 严格隔离，MessageBus 无需自行过滤。
 
-**路径 A（优先）**：`subscribeSessionEvents()` + EventBus 广播
+### 2.3 实时消息通道方案（Phase 0 已决策）
 
-**路径 B（如果 A 不可用）**：Pi SDK extension 拦截事件 + `bus.emit` 跨插件广播
-- 每个参与者的插件实例在当前 session 注册 Pi SDK extension
-- 拦截 `tool_call`、`input`、`before_agent_start` 等事件
-- 通过 EventBus 广播到其他参与者的插件实例
-- 接收方通过 `sendSessionMessage` 注入上下文
+**路径 A（✅ 已采用）**：`subscribeSessionEvents()` + EventBus 广播
 
-**路径 C（最后手段）**：定时轮询 `session:history` + 序列号差量同步
-- 每秒轮询一次，对比上次同步的 seq
-- 适合 Phase 0 smoke test，不适合生产环境
+- Phase 0 已验证：API 存在、签名匹配、事件流实时到达、按 session 隔离。
+- Phase 1 的 `EventBusTransport` 以 `subscribeSessionEvents` 为事件源，`sendSessionMessage` 为写入通道。
+- 参与者各自订阅自己房间对应的 session，事件经 MessageBus 去重/排序后广播。
+- **`session_busy` 处理**：目标 session 活跃时发送返回 `session_busy`，消息应进入 `pendingMessages[]`（§4.2）等待重试，而非当作失败。
+
+**路径 B（❌ 已排除）**：Pi SDK extension 拦截事件 + `bus.emit` 跨插件广播
+- 不需要。路径 A 已完全可行，无需降级。保留作为极端情况（未来某事件类型无法通过 subscribeSessionEvents 获取时）的备选。
+
+**路径 C（❌ 已排除）**：定时轮询 `session:history` + 序列号差量同步
+- 不需要。实时事件流已可用。
 
 ---
 
@@ -454,26 +463,20 @@ interface ToolPermission {
 
 ## 10. 实施路线图
 
-### Phase 0 · 最小验证（0.5 天）
+### Phase 0 · 最小验证 ✅（已完成 2026-08-04）
 
 **目标**：验证两个核心假设
 
 1. `subscribeSessionEvents` 是否存在、签名正确？
-   ```typescript
-   // 20 行 smoke test
-   import { subscribeSessionEvents } from '@hana/plugin-runtime';
-   // 尝试订阅当前 session 事件，输出回调收到的 event
-   ```
+   ✅ 存在且签名匹配（`(ctx, target, handler) => () => void`），事件流实时可达、按 session 隔离。
 2. 插件能否跨用户操作 session？
-   - 同机创建两个用户 session
-   - 插件从一个 session 向另一个 session 发送 `session:send`
-   - 验证是否报权限错误
+   ✅ 创建/订阅/发送均成功，零权限错误；`session_busy` 为运行中保护非权限边界。
 
-**通过标准**：
-- `subscribeSessionEvents` 存在且签名匹配文档 → 使用路径 A
-- `subscribeSessionEvents` 不存在或签名不匹配 → 降级路径 B（Pi SDK extension）
-- 跨用户操作成功 → Phase 1 同机路径可行
-- 跨用户操作失败 → Phase 1 限定为"所有参与者安装插件，通过 EventBus 通信"
+**通过标准**（全部达成）：
+- `subscribeSessionEvents` 存在且签名匹配文档 → **采用路径 A** ✅
+- 跨用户操作成功 → Phase 1 同机路径可行 ✅
+
+验证产物：`docs/phase-0-report.md` + `phase0/smoke-plugin/`
 
 ### Phase 1 · 同机共享（1-2 周）
 
