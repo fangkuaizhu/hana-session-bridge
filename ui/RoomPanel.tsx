@@ -66,7 +66,6 @@ function RoomPanel() {
   }, []);
 
   useEffect(() => {
-    hana.ready();
     refreshRooms();
     const timer = setInterval(refreshRooms, POLL_INTERVAL_MS * 3);
     return () => clearInterval(timer);
@@ -496,6 +495,9 @@ function JoinRoomDialog(props: { onClose: () => void; onJoined: (roomId: string)
     </div>
   );
 }
+
+// 在 React 渲染前立刻发 ready 信号，避免 Hana 主机超时转圈
+hana.ready();
 
 const root = document.getElementById('root');
 if (root) createRoot(root).render(<RoomPanel />);

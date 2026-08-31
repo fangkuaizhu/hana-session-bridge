@@ -29638,7 +29638,7 @@ function TA() {
     }
   }, []);
   Dt.useEffect(() => {
-    p2.ready(), re();
+    re();
     const A = setInterval(re, MS * 3);
     return () => clearInterval(A);
   }, [re]);
@@ -29940,5 +29940,6 @@ function UA(b) {
     ] })
   ] }) });
 }
+p2.ready();
 const s2 = document.getElementById("root");
 s2 && IT.createRoot(s2).render(/* @__PURE__ */ ee.jsx(TA, {}));
