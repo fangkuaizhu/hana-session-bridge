@@ -2,8 +2,23 @@
 // session-bridge_join-room：加入共享房间。
 // 有密码 → 验证通过直接加入；无密码 → 创建待批准请求。
 import { defineTool } from '../vendor/plugin-runtime.js';
+import type { HanaToolContext } from '../vendor/plugin-runtime.js';
 import { getSharedState } from '../lib/shared.ts';
 import { WebSocketTransport } from '../lib/websocket-transport.ts';
+
+/**
+ * 协作级别及以上房间：join 成功后为参与者创建隐藏 Agent（Phase 3 P5）。
+ * fire-and-forget：不阻塞加入响应；失败仅记日志。低级别房间 ensureAgents 内部返回 notice。
+ */
+function maybeEnsureAgents(roomId: string, ctx: HanaToolContext): void {
+  Promise.resolve().then(async () => {
+    try {
+      await getSharedState(ctx).contextSync.ensureAgents(roomId);
+    } catch (e) {
+      ctx.log?.warn?.('session-bridge: ensureAgents 失败', e instanceof Error ? e.message : String(e));
+    }
+  }).catch(() => { /* ignore */ });
+}
 
 export const { name, description, parameters, execute } = defineTool({
   name: 'join_room',
@@ -49,6 +64,7 @@ export const { name, description, parameters, execute } = defineTool({
         messageBus.bridgeSession(roomId, sessionPath);
       }
       const room = roomManager.getRoom(roomId);
+      maybeEnsureAgents(roomId, ctx);
       return {
         status: 'joined',
         roomId,
@@ -77,6 +93,7 @@ export const { name, description, parameters, execute } = defineTool({
         messageBus.bridgeSession(roomId, sessionPath);
       }
       const room = roomManager.getRoom(roomId);
+      maybeEnsureAgents(roomId, ctx);
       return {
         status: 'joined',
         roomId,
