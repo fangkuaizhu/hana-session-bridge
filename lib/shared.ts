@@ -14,12 +14,21 @@ import { EventBusTransport } from './eventbus-transport.ts';
 import { WebSocketTransport } from './websocket-transport.ts';
 import { RoomManager } from './room-manager.ts';
 import { MessageBus } from './message-bus.ts';
+import { AuditLog } from './audit-log.ts';
+import { ToolProxy } from './tool-proxy.ts';
+import { ContextSync } from './context-sync.ts';
 import type { Transport } from './transport.ts';
 
 export interface SharedState {
   roomManager: RoomManager;
   transport: Transport;
   messageBus: MessageBus;
+  /** 工具代理审计日志（Phase 3 P3） */
+  auditLog: AuditLog;
+  /** 工具代理裁决引擎（Phase 3 P1/P4） */
+  toolProxy: ToolProxy;
+  /** 多 Agent 上下文同步（Phase 3 P5） */
+  contextSync: ContextSync;
 }
 
 /** dataDir -> SharedState（同一 dataDir 视为同一插件实例） */
@@ -49,7 +58,18 @@ export function getSharedState(ctx: HanaPluginContext): SharedState {
   if (transport instanceof WebSocketTransport) {
     transport.setGlobalMessageHandler((roomId, msg) => messageBus.handleMessage(roomId, msg));
   }
-  const state: SharedState = { roomManager, transport, messageBus };
+
+  // Phase 3：工具代理（P1 引擎 + P3 审计）+ 上下文同步（P5）。
+  // 装配时把已持久化的房间权限表灌入 ToolProxy 内存裁决缓存（P4 持久化闭环）。
+  const auditLog = new AuditLog(ctx.dataDir);
+  const toolProxy = new ToolProxy(roomManager, messageBus, auditLog);
+  for (const room of roomManager.listActiveRooms()) {
+    const perms = roomManager.getToolPermissions(room.roomId);
+    if (perms.length > 0) toolProxy.configurePermissions(room.roomId, perms);
+  }
+  const contextSync = new ContextSync(ctx, roomManager, messageBus);
+
+  const state: SharedState = { roomManager, transport, messageBus, auditLog, toolProxy, contextSync };
   instances.set(key, state);
   return state;
 }
@@ -57,6 +77,7 @@ export function getSharedState(ctx: HanaPluginContext): SharedState {
 /** 插件卸载时清理（index.ts onunload 调用） */
 export function disposeAll(): void {
   for (const state of instances.values()) {
+    state.toolProxy.dispose();
     state.messageBus.dispose();
     state.roomManager.dispose();
   }

@@ -12,6 +12,7 @@ import path from 'node:path';
 import { createRequire } from 'node:module';
 import type { HanaPluginContext } from '../vendor/plugin-runtime.js';
 import { readJSON, writeJSON, deleteFile, listFiles } from './store.ts';
+import type { ToolPermission } from './tool-proxy.ts'; // type-only：运行时无环依赖
 
 // bcryptjs 是 CommonJS 包，vendored 到 vendor/bcryptjs/；ESM 下用 createRequire 加载
 const require = createRequire(import.meta.url);
@@ -27,6 +28,8 @@ export interface Participant {
   userId: string;
   sessionPath: string;
   joinedAt: number;
+  /** 协作级别及以上房间：参与者对应的隐藏 Agent（Phase 3 P5，ContextSync 创建） */
+  agentId?: string;
 }
 
 export interface PendingJoin {
@@ -50,6 +53,8 @@ export interface Room {
   seqCounter: number;
   /** 跨机标志：房间由远端房主创建，本地仅记录参与者视角（Phase 2） */
   remote?: boolean;
+  /** 工具代理权限表（Phase 3 P4，持久化于房间 JSON；运行时同步到 ToolProxy 内存表） */
+  toolPermissions?: ToolPermission[];
 }
 
 export const ROOM_CODE_LENGTH = 8;
@@ -384,6 +389,70 @@ export class RoomManager {
     if (!room) return;
     room.lastActivityAt = Date.now();
     this.persist(room);
+  }
+
+  // ------------------------------------------------------------------
+  // 工具代理权限持久化（Phase 3 P4）
+  // room.toolPermissions 为磁盘真相；ToolProxy 内存表为运行时裁决缓存，
+  // 由 shared.ts 装配时灌入、set-permission 工具同步更新。
+  // ------------------------------------------------------------------
+
+  /** 读取房间工具权限表（无则空数组） */
+  getToolPermissions(roomId: string): ToolPermission[] {
+    return this.getRoom(roomId)?.toolPermissions ?? [];
+  }
+
+  /** 设置/替换单个工具权限并落盘（同名工具覆盖） */
+  async setToolPermission(roomId: string, permission: ToolPermission): Promise<void> {
+    return this.withRoomLock(roomId, async () => {
+      const room = this.getRoom(roomId);
+      if (!room) return;
+      const list = [...(room.toolPermissions ?? [])];
+      const idx = list.findIndex((p) => p.toolName === permission.toolName);
+      if (idx >= 0) list[idx] = permission;
+      else list.push(permission);
+      room.toolPermissions = list;
+      room.lastActivityAt = Date.now();
+      this.persist(room);
+    });
+  }
+
+  /** 移除某工具权限；返回是否真的删除了 */
+  async removeToolPermission(roomId: string, toolName: string): Promise<boolean> {
+    return this.withRoomLock(roomId, async () => {
+      const room = this.getRoom(roomId);
+      if (!room) return false;
+      const list = room.toolPermissions ?? [];
+      const next = list.filter((p) => p.toolName !== toolName);
+      if (next.length === list.length) return false;
+      room.toolPermissions = next;
+      room.lastActivityAt = Date.now();
+      this.persist(room);
+      return true;
+    });
+  }
+
+  /** 覆盖整张工具权限表并落盘 */
+  async setToolPermissions(roomId: string, permissions: ToolPermission[]): Promise<void> {
+    return this.withRoomLock(roomId, async () => {
+      const room = this.getRoom(roomId);
+      if (!room) return;
+      room.toolPermissions = [...permissions];
+      room.lastActivityAt = Date.now();
+      this.persist(room);
+    });
+  }
+
+  /** 记录参与者的隐藏 Agent（Phase 3 P5：ContextSync.ensureAgents 调用） */
+  async setParticipantAgent(roomId: string, userId: string, agentId: string): Promise<void> {
+    return this.withRoomLock(roomId, async () => {
+      const room = this.getRoom(roomId);
+      if (!room) return;
+      const p = room.participants.find((x) => x.userId === userId);
+      if (p) p.agentId = agentId;
+      room.lastActivityAt = Date.now();
+      this.persist(room);
+    });
   }
 
   /** 启动 30 分钟超时定时器（设计文档 §5.5）。onTimeout 在超时触发。 */

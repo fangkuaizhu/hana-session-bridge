@@ -2,10 +2,10 @@
   "manifestVersion": 1,
   "id": "session-bridge",
   "name": "会话共享",
-  "version": "0.2.0",
-  "description": "SessionBridge：跨设备实时共享会话上下文。同机（EventBus）+ 跨机（WebSocket Relay）双通道",
+  "version": "0.3.0",
+  "description": "SessionBridge：跨设备实时共享会话上下文 + 协作工具代理。同机（EventBus）+ 跨机（WebSocket Relay）双通道",
   "trust": "full-access",
-  "activationEvents": ["onStartup", "onToolCall:create-room", "onToolCall:join-room", "onToolCall:leave-room", "onToolCall:room-status"],
+  "activationEvents": ["onStartup", "onToolCall:create-room", "onToolCall:join-room", "onToolCall:leave-room", "onToolCall:room-status", "onToolCall:set-permission", "onToolCall:list-permissions"],
   "capabilities": [
     "session.read",
     "session.write",
@@ -43,7 +43,9 @@
       "tools/create-room.ts",
       "tools/join-room.ts",
       "tools/leave-room.ts",
-      "tools/room-status.ts"
+      "tools/room-status.ts",
+      "tools/set-permission.ts",
+      "tools/list-permissions.ts"
     ],
     "page": {
       "title": "共享房间",
