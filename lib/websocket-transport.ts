@@ -22,6 +22,8 @@ import type { RoomManager } from './room-manager.ts';
 const require = createRequire(import.meta.url);
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const WebSocket = require('../vendor/ws/index.js') as typeof import('ws');
+/** ws 客户端实例类型（避免与 @types/node 全局 WebSocket 撞名的类型歧义，纯编译期修复） */
+type WsClient = InstanceType<typeof WebSocket>;
 
 const HEARTBEAT_INTERVAL_MS = 30_000;
 const HEARTBEAT_TIMEOUT_MS = 10_000;
@@ -61,7 +63,7 @@ export class WebSocketTransport implements Transport {
   private roomManager: RoomManager;
 
   /** roomId -> WebSocket 连接 */
-  private sockets = new Map<string, WebSocket>();
+  private sockets = new Map<string, WsClient>();
   /** roomId -> 该房间消息监听器集合 */
   private messageListeners = new Map<string, Set<(msg: Message) => void>>();
   /** roomId -> 该房间连接状态监听器集合 */
@@ -205,7 +207,7 @@ export class WebSocketTransport implements Transport {
 
     this.notifyStatus(roomId, 'connecting');
 
-    let ws: WebSocket;
+    let ws: WsClient;
     try {
       ws = new WebSocket(this.relayUrl);
     } catch (e) {
@@ -332,7 +334,7 @@ export class WebSocketTransport implements Transport {
   }
 
   /** 握手成功：注册 socket、启动心跳、通知 connected、拉取房间状态 */
-  private attach(roomId: string, ws: WebSocket): void {
+  private attach(roomId: string, ws: WsClient): void {
     this.sockets.set(roomId, ws);
     this.reconnectAttempts.delete(roomId);
     this.notifyStatus(roomId, 'connected');
