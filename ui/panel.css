@@ -283,3 +283,78 @@
 .sb-approval-item span:first-child {
   flex: 1;
 }
+
+/* Phase 3 P2：工具调用批准弹窗（覆盖在 WebView 上方，不打断 Agent 流） */
+.sb-approval-overlay {
+  position: fixed;
+  top: 14px;
+  right: 14px;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 400px;
+}
+.sb-approval-card {
+  background: var(--bg-card, #ffffff);
+  border: 1px solid var(--border, rgba(128,128,128,0.25));
+  border-radius: 14px;
+  padding: 14px;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.18);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.sb-approval-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.sb-approval-title {
+  font-weight: 600;
+  font-size: 14px;
+}
+.sb-approval-countdown {
+  font-variant-numeric: tabular-nums;
+  font-size: 13px;
+  color: var(--text-secondary, #667);
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent, #537d96) 12%, transparent);
+}
+.sb-approval-countdown[data-urgent='true'] {
+  background: color-mix(in srgb, var(--danger, #d73a49) 15%, transparent);
+  color: var(--danger, #d73a49);
+}
+.sb-approval-who {
+  font-size: 13px;
+  color: var(--text-secondary, #556);
+}
+.sb-approval-tool {
+  font-family: monospace;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--accent, #537d96);
+}
+.sb-approval-params {
+  margin: 0;
+  padding: 8px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--border, #888) 8%, transparent);
+  font-family: monospace;
+  font-size: 12px;
+  white-space: pre-wrap;
+  word-break: break-all;
+  max-height: 120px;
+  overflow: auto;
+}
+.sb-approval-reason {
+  font-size: 12px;
+  color: var(--text-secondary, #778);
+}
+.sb-approval-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}

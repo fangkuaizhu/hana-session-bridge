@@ -187,6 +187,38 @@ export default function registerRoomApiRoutes(app: { get: (p: string, h: (c: Hon
     return c.json({ ok: true });
   });
 
+  // GET /api/rooms/:roomId/approvals — 列出待批准的工具调用（Phase 3 P2 UI 轮询）
+  app.get('/rooms/:roomId/approvals', async (c: HonoLikeContext) => {
+    const { toolProxy } = getState();
+    const roomId = (c.req.param('roomId') ?? '').toUpperCase();
+    const pending = toolProxy.listPendingApprovals(roomId).map((p) => ({
+      requestId: p.requestId,
+      roomId: p.roomId,
+      fromUserId: p.request.fromUserId,
+      toUserId: p.request.toUserId,
+      toolName: p.request.toolName,
+      params: p.request.params,
+      reason: p.reason,
+      createdAt: p.createdAt,
+      timeoutMs: p.timeoutMs,
+      deadline: p.deadline,
+    }));
+    return c.json({ approvals: pending });
+  });
+
+  // POST /api/rooms/:roomId/tool-approve — 响应工具调用批准弹窗（Phase 3 P2）
+  // body { requestId, approved, scope }；scope: once|session|always
+  app.post('/rooms/:roomId/tool-approve', async (c: HonoLikeContext) => {
+    const { toolProxy } = getState();
+    const roomId = (c.req.param('roomId') ?? '').toUpperCase();
+    const body = (await c.req.json()) as { requestId?: string; approved?: boolean; scope?: 'once' | 'session' | 'always' };
+    if (!body.requestId || typeof body.approved !== 'boolean') {
+      return c.json({ error: 'requestId 与 approved 必填' }, 400);
+    }
+    await toolProxy.respondApproval(body.requestId, body.approved, body.scope === 'session' || body.scope === 'always' ? body.scope : undefined);
+    return c.json({ ok: true });
+  });
+
   // POST /api/rooms/:roomId/suggest — 发送建议消息
   app.post('/rooms/:roomId/suggest', async (c: HonoLikeContext) => {
     const { messageBus } = getState();

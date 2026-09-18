@@ -128,6 +128,8 @@ interface PendingApproval {
   request: ToolCallRequest;
   reason: ApprovalReason;
   createdAt: number;
+  /** 弹窗超时毫秒（UI 倒计时用） */
+  timeoutMs: number;
   resolve: (r: ToolCallResult) => void;
   timer: ReturnType<typeof setTimeout>;
 }
@@ -387,7 +389,7 @@ export class ToolProxy {
         });
         resolve({ requestId: request.requestId, status: 'timeout', error: '批准超时' });
       }, timeoutMs);
-      this.pendingApprovals.set(request.requestId, { roomId, request, reason, createdAt: this.opts.now(), resolve, timer });
+      this.pendingApprovals.set(request.requestId, { roomId, request, reason, createdAt: this.opts.now(), timeoutMs, resolve, timer });
       this.opts.onApprovalRequested?.(roomId, {
         requestId: request.requestId,
         fromUserId: request.fromUserId,
@@ -511,11 +513,11 @@ export class ToolProxy {
   // --------------------------------------------------------------------------
 
   /** 列出房间内正在等待批准的请求（P2 UI 轮询/展示用） */
-  listPendingApprovals(roomId?: string): Array<{ requestId: string; roomId: string; request: ToolCallRequest; reason: ApprovalReason; createdAt: number }> {
-    const out: Array<{ requestId: string; roomId: string; request: ToolCallRequest; reason: ApprovalReason; createdAt: number }> = [];
+  listPendingApprovals(roomId?: string): Array<{ requestId: string; roomId: string; request: ToolCallRequest; reason: ApprovalReason; createdAt: number; timeoutMs: number; deadline: number }> {
+    const out: Array<{ requestId: string; roomId: string; request: ToolCallRequest; reason: ApprovalReason; createdAt: number; timeoutMs: number; deadline: number }> = [];
     for (const p of this.pendingApprovals.values()) {
       if (!roomId || p.roomId === roomId) {
-        out.push({ requestId: p.request.requestId, roomId: p.roomId, request: p.request, reason: p.reason, createdAt: p.createdAt });
+        out.push({ requestId: p.request.requestId, roomId: p.roomId, request: p.request, reason: p.reason, createdAt: p.createdAt, timeoutMs: p.timeoutMs, deadline: p.createdAt + p.timeoutMs });
       }
     }
     return out;

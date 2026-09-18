@@ -113,3 +113,34 @@ export interface MessagesResponse {
   messages: RoomMessage[];
   hasMore: boolean;
 }
+
+// ------------------------------------------------------------------
+// Phase 3 P2：工具调用批准弹窗
+// ------------------------------------------------------------------
+
+export type ToolApprovalReason = 'approval_mode' | 'param_mismatch' | 'unconfigured';
+export type ToolApprovalScope = 'once' | 'session' | 'always';
+
+/** 待批准的工具调用（GET rooms/:roomId/approvals 返回项） */
+export interface ToolApproval {
+  requestId: string;
+  roomId: string;
+  fromUserId: string;
+  toUserId: string;
+  toolName: string;
+  params: Record<string, unknown>;
+  reason: ToolApprovalReason;
+  createdAt: number;
+  timeoutMs: number;
+  deadline: number;
+}
+
+export interface ApprovalsResponse {
+  approvals: ToolApproval[];
+}
+
+export interface ToolApproveRequest {
+  requestId: string;
+  approved: boolean;
+  scope?: ToolApprovalScope;
+}

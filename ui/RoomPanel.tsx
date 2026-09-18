@@ -13,7 +13,9 @@ import {
 } from '@hana/plugin-components';
 import '@hana/plugin-components/styles.css';
 import './panel.css';
+import { ApprovalDialog } from './ApprovalDialog.tsx';
 import type {
+  ApprovalsResponse,
   CreateRoomRequest,
   CreateRoomResponse,
   JoinRoomRequest,
@@ -24,6 +26,9 @@ import type {
   RoomDetailResponse,
   RoomMessage,
   RoomSummary,
+  ToolApproval,
+  ToolApprovalScope,
+  ToolApproveRequest,
 } from './types.ts';
 
 const POLL_INTERVAL_MS = 1000;
@@ -171,6 +176,7 @@ function RoomView(props: { room: RoomSummary; onBack: () => void; onRoomsChanged
   const [lastSeq, setLastSeq] = useState(0);
   const [suggestText, setSuggestText] = useState('');
   const [notice, setNotice] = useState<string | null>(null);
+  const [approvals, setApprovals] = useState<ToolApproval[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // 房间详情（参与者/待批准）
@@ -205,6 +211,34 @@ function RoomView(props: { room: RoomSummary; onBack: () => void; onRoomsChanged
     const timer = setInterval(poll, POLL_INTERVAL_MS);
     return () => { alive = false; clearInterval(timer); };
   }, [roomId, lastSeq]);
+
+  // 待批准的工具调用轮询（Phase 3 P2）
+  useEffect(() => {
+    let alive = true;
+    const poll = async () => {
+      try {
+        const res = await apiFetch<ApprovalsResponse>(`rooms/${roomId}/approvals`);
+        if (alive) setApprovals(res.approvals ?? []);
+      } catch { /* 忽略瞬时错误 */ }
+    };
+    poll();
+    const timer = setInterval(poll, POLL_INTERVAL_MS);
+    return () => { alive = false; clearInterval(timer); };
+  }, [roomId]);
+
+  const respondApproval = useCallback(async (requestId: string, approved: boolean, scope?: ToolApprovalScope) => {
+    const body: ToolApproveRequest = { requestId, approved };
+    if (scope) body.scope = scope;
+    try {
+      await apiFetch<{ ok: boolean }>(`rooms/${roomId}/tool-approve`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+    } catch { /* 忽略瞬时错误，下轮轮询会刷新 */ }
+    // 本地乐观移除已响应的请求
+    setApprovals((prev) => prev.filter((a) => a.requestId !== requestId));
+  }, [roomId]);
 
   // 自动滚动到底部
   useEffect(() => {
@@ -277,6 +311,8 @@ function RoomView(props: { room: RoomSummary; onBack: () => void; onRoomsChanged
       </div>
 
       <InputBar value={suggestText} onChange={setSuggestText} onSend={sendSuggestion} />
+
+      <ApprovalDialog approvals={approvals} onRespond={respondApproval} />
     </div>
   );
 }

@@ -17,6 +17,7 @@ import { MessageBus } from './message-bus.ts';
 import { AuditLog } from './audit-log.ts';
 import { ToolProxy } from './tool-proxy.ts';
 import { ContextSync } from './context-sync.ts';
+import { createToolExecutor } from './tool-executor.ts';
 import type { Transport } from './transport.ts';
 
 export interface SharedState {
@@ -62,7 +63,9 @@ export function getSharedState(ctx: HanaPluginContext): SharedState {
   // Phase 3：工具代理（P1 引擎 + P3 审计）+ 上下文同步（P5）。
   // 装配时把已持久化的房间权限表灌入 ToolProxy 内存裁决缓存（P4 持久化闭环）。
   const auditLog = new AuditLog(ctx.dataDir);
-  const toolProxy = new ToolProxy(roomManager, messageBus, auditLog);
+  const toolProxy = new ToolProxy(roomManager, messageBus, auditLog, {
+    executor: createToolExecutor(ctx),
+  });
   for (const room of roomManager.listActiveRooms()) {
     const perms = roomManager.getToolPermissions(room.roomId);
     if (perms.length > 0) toolProxy.configurePermissions(room.roomId, perms);
